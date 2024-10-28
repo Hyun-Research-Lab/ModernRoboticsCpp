@@ -27,36 +27,23 @@ namespace mr {
 	 * Output: Eigen::MatrixXd (6x6)
 	 * Note: Can be used to calculate the Lie bracket [V1, V2] = [adV1]V2
 	 */
-	Eigen::MatrixXd ad(Eigen::VectorXd V) {
-		Eigen::Matrix3d omgmat = VecToso3(Eigen::Vector3d(V(0), V(1), V(2)));
+	Matrix<6> ad(const Vector<6> &V) {
+		Matrix<3> omgmat = VecToso3(Vector<3>(V(0), V(1), V(2)));
 
-		Eigen::MatrixXd result(6, 6);
+		Matrix<6> result;
 		result.topLeftCorner<3, 3>() = omgmat;
-		result.topRightCorner<3, 3>() = Eigen::Matrix3d::Zero(3, 3);
-		result.bottomLeftCorner<3, 3>() = VecToso3(Eigen::Vector3d(V(3), V(4), V(5)));
+		result.topRightCorner<3, 3>() = Matrix<3>::Zero();
+		result.bottomLeftCorner<3, 3>() = VecToso3(Vector<3>(V(3), V(4), V(5)));
 		result.bottomRightCorner<3, 3>() = omgmat;
 		return result;
 	}
 
-	/* Function: Returns a normalized version of the input vector
-	 * Input: Eigen::MatrixXd
-	 * Output: Eigen::MatrixXd
-	 * Note: MatrixXd is used instead of VectorXd for the case of row vectors
-	 * 		Requires a copy
-	 *		Useful because of the MatrixXd casting
-	 */
-	Eigen::MatrixXd Normalize(Eigen::MatrixXd V) {
-		V.normalize();
-		return V;
-	}
-
-
 	/* Function: Returns the skew symmetric matrix representation of an angular velocity vector
-	 * Input: Eigen::Vector3d 3x1 angular velocity vector
+	 * Input: Vector<3> 3x1 angular velocity vector
 	 * Returns: Eigen::MatrixXd 3x3 skew symmetric matrix
 	 */
-	Eigen::Matrix3d VecToso3(const Eigen::Vector3d& omg) {
-		Eigen::Matrix3d m_ret;
+	Matrix<3> VecToso3(const Vector<3>& omg) {
+		Matrix<3> m_ret;
 		m_ret << 0, -omg(2), omg(1),
 			omg(2), 0, -omg(0),
 			-omg(1), omg(0), 0;
@@ -66,10 +53,10 @@ namespace mr {
 
 	/* Function: Returns angular velocity vector represented by the skew symmetric matrix
 	 * Inputs: Eigen::MatrixXd 3x3 skew symmetric matrix
-	 * Returns: Eigen::Vector3d 3x1 angular velocity
+	 * Returns: Vector<3> 3x1 angular velocity
 	 */
-	Eigen::Vector3d so3ToVec(const Eigen::MatrixXd& so3mat) {
-		Eigen::Vector3d v_ret;
+	Vector<3> so3ToVec(const Matrix<3>& so3mat) {
+		Vector<3> v_ret;
 		v_ret << so3mat(2, 1), so3mat(0, 2), so3mat(1, 0);
 		return v_ret;
 	}
@@ -80,10 +67,9 @@ namespace mr {
 	 *				and the angle of rotation)
 	 * Returns: The axis and angle of rotation as [x, y, z, theta]
 	 */
-	Eigen::Vector4d AxisAng3(const Eigen::Vector3d& expc3) {
-		Eigen::Vector4d v_ret;
-		v_ret << Normalize(expc3), expc3.norm();
-		return v_ret;
+	std::tuple<Vector<3>, double> AxisAng3(const Vector<3>& expc3) {
+		double theta = expc3.norm();
+		return std::make_tuple(expc3 / theta, theta);
 	}
 
 
@@ -91,16 +77,16 @@ namespace mr {
 	 * Inputs: exponenential representation of a rotation
 	 * Returns: Rotation matrix
 	 */
-	Eigen::Matrix3d MatrixExp3(const Eigen::Matrix3d& so3mat) {
-		Eigen::Vector3d omgtheta = so3ToVec(so3mat);
+	Matrix<3> MatrixExp3(const Matrix<3>& so3mat) {
+		Vector<3> omgtheta = so3ToVec(so3mat);
 
-		Eigen::Matrix3d m_ret = Eigen::Matrix3d::Identity();
+		Matrix<3> m_ret = Matrix<3>::Identity();
 		if (NearZero(so3mat.norm())) {
 			return m_ret;
 		}
 		else {
-			double theta = (AxisAng3(omgtheta))(3);
-			Eigen::Matrix3d omgmat = so3mat * (1 / theta);
+			double theta = std::get<1>(AxisAng3(omgtheta));
+			Matrix<3> omgmat = so3mat * (1 / theta);
 			return m_ret + std::sin(theta) * omgmat + ((1 - std::cos(theta)) * (omgmat * omgmat));
 		}
 	}
@@ -110,19 +96,19 @@ namespace mr {
 	 * Inputs: Rotation matrix
 	 * Returns: matrix logarithm of a rotation
 	 */
-	Eigen::Matrix3d MatrixLog3(const Eigen::Matrix3d& R) {
+	Matrix<3> MatrixLog3(const Matrix<3>& R) {
 		double acosinput = (R.trace() - 1) / 2.0;
-		Eigen::MatrixXd m_ret = Eigen::MatrixXd::Zero(3, 3);
+		Matrix<3> m_ret = Matrix<3>::Zero();
 		if (acosinput >= 1)
 			return m_ret;
 		else if (acosinput <= -1) {
-			Eigen::Vector3d omg;
+			Vector<3> omg;
 			if (!NearZero(1 + R(2, 2)))
-				omg = (1.0 / std::sqrt(2 * (1 + R(2, 2))))*Eigen::Vector3d(R(0, 2), R(1, 2), 1 + R(2, 2));
+				omg = (1.0 / std::sqrt(2 * (1 + R(2, 2))))*Vector<3>(R(0, 2), R(1, 2), 1 + R(2, 2));
 			else if (!NearZero(1 + R(1, 1)))
-				omg = (1.0 / std::sqrt(2 * (1 + R(1, 1))))*Eigen::Vector3d(R(0, 1), 1 + R(1, 1), R(2, 1));
+				omg = (1.0 / std::sqrt(2 * (1 + R(1, 1))))*Vector<3>(R(0, 1), 1 + R(1, 1), R(2, 1));
 			else
-				omg = (1.0 / std::sqrt(2 * (1 + R(0, 0))))*Eigen::Vector3d(1 + R(0, 0), R(1, 0), R(2, 0));
+				omg = (1.0 / std::sqrt(2 * (1 + R(0, 0))))*Vector<3>(1 + R(0, 0), R(1, 0), R(2, 0));
 			m_ret = VecToso3(M_PI * omg);
 			return m_ret;
 		}
@@ -139,8 +125,8 @@ namespace mr {
 	 * Returns: Matrix of T = [ [R, p],
 	 *						    [0, 1] ]
 	 */
-	Eigen::MatrixXd RpToTrans(const Eigen::Matrix3d& R, const Eigen::Vector3d& p) {
-		Eigen::MatrixXd m_ret(4, 4);
+	Matrix<4> RpToTrans(const Matrix<3>& R, const Vector<3>& p) {
+		Matrix<4> m_ret(4, 4);
 		m_ret << R, p,
 			0, 0, 0, 1;
 		return m_ret;
@@ -152,18 +138,14 @@ namespace mr {
 	 * Inputs: Homogeneous transformation matrix
 	 * Returns: std::vector of [rotation matrix, position vector]
 	 */
-	std::vector<Eigen::MatrixXd> TransToRp(const Eigen::MatrixXd& T) {
-		std::vector<Eigen::MatrixXd> Rp_ret;
-		Eigen::Matrix3d R_ret;
+	std::tuple<Matrix<3>, Vector<3>> TransToRp(const Matrix<4>& T) {
 		// Get top left 3x3 corner
-		R_ret = T.block<3, 3>(0, 0);
+		Matrix<3> R_out = T.block<3, 3>(0, 0);
 
-		Eigen::Vector3d p_ret(T(0, 3), T(1, 3), T(2, 3));
+		// Get top right 3x1 corner
+		Vector<3> p_out = Vector<3>(T(0, 3), T(1, 3), T(2, 3));
 
-		Rp_ret.push_back(R_ret);
-		Rp_ret.push_back(p_ret);
-
-		return Rp_ret;
+		return std::make_tuple(R_out, p_out);
 	}
 
 
@@ -171,13 +153,13 @@ namespace mr {
 	 * Inputs: Spatial velocity vector [angular velocity, linear velocity]
 	 * Returns: Transformation matrix
 	 */
-	Eigen::MatrixXd VecTose3(const Eigen::VectorXd& V) {
+	Matrix<4> VecTose3(const Vector<6> &V) {
 		// Separate angular (exponential representation) and linear velocities
-		Eigen::Vector3d exp(V(0), V(1), V(2));
-		Eigen::Vector3d linear(V(3), V(4), V(5));
+		Vector<3> exp(V(0), V(1), V(2));
+		Vector<3> linear(V(3), V(4), V(5));
 
 		// Fill in values to the appropriate parts of the transformation matrix
-		Eigen::MatrixXd m_ret(4, 4);
+		Matrix<4> m_ret;
 		m_ret << VecToso3(exp), linear,
 			0, 0, 0, 0;
 
@@ -189,10 +171,9 @@ namespace mr {
 	 * Inputs: Transformation matrix
 	 * Returns: Spatial velocity vector [angular velocity, linear velocity]
 	 */
-	Eigen::VectorXd se3ToVec(const Eigen::MatrixXd& T) {
-		Eigen::VectorXd m_ret(6);
+	Vector<6> se3ToVec(const Matrix<4>& T) {
+		Vector<6> m_ret;
 		m_ret << T(2, 1), T(0, 2), T(1, 0), T(0, 3), T(1, 3), T(2, 3);
-
 		return m_ret;
 	}
 
@@ -202,33 +183,35 @@ namespace mr {
 	 * Inputs: 4x4 Transformation matrix SE(3)
 	 * Returns: 6x6 Adjoint Representation of the matrix
 	 */
-	Eigen::MatrixXd Adjoint(const Eigen::MatrixXd& T) {
-		std::vector<Eigen::MatrixXd> R = TransToRp(T);
-		Eigen::MatrixXd ad_ret(6, 6);
-		ad_ret = Eigen::MatrixXd::Zero(6, 6);
-		Eigen::MatrixXd zeroes = Eigen::MatrixXd::Zero(3, 3);
-		ad_ret << R[0], zeroes,
-			VecToso3(R[1]) * R[0], R[0];
+	Matrix<6> Adjoint(const Matrix<4>& T) {
+		
+		// T = (R, p)
+		Matrix<3> R;
+		Vector<3> p;
+		std::tie(R, p) = TransToRp(T);
+
+		Matrix<6> ad_ret;
+		ad_ret << R, Matrix<3>::Zero(), 
+				VecToso3(p) * R, R;
 		return ad_ret;
 	}
 
 
 	/* Function: Rotation expanded for screw axis
 	 * Inputs: se3 matrix representation of exponential coordinates (transformation matrix)
-	 * Returns: 6x6 Matrix representing the rotation
+	 * Returns: 4x4 Matrix representing the rotation
 	 */
-	Eigen::MatrixXd MatrixExp6(const Eigen::MatrixXd& se3mat) {
+	Matrix<4> MatrixExp6(const Matrix<4>& se3mat) {
 		// Extract the angular velocity vector from the transformation matrix
-		Eigen::Matrix3d se3mat_cut = se3mat.block<3, 3>(0, 0);
-		Eigen::Vector3d omgtheta = so3ToVec(se3mat_cut);
-
-		Eigen::MatrixXd m_ret(4, 4);
+		Matrix<3> se3mat_cut = se3mat.block<3, 3>(0, 0);
+		Vector<3> omgtheta = so3ToVec(se3mat_cut);
+		Matrix<4> m_ret;
 
 		// If negligible rotation, m_Ret = [[Identity, angular velocty ]]
 		//									[	0	 ,		1		   ]]
 		if (NearZero(omgtheta.norm())) {
 			// Reuse previous variables that have our required size
-			se3mat_cut = Eigen::MatrixXd::Identity(3, 3);
+			se3mat_cut = Matrix<3>::Identity();
 			omgtheta << se3mat(0, 3), se3mat(1, 3), se3mat(2, 3);
 			m_ret << se3mat_cut, omgtheta,
 				0, 0, 0, 1;
@@ -236,11 +219,11 @@ namespace mr {
 		}
 		// If not negligible, MR page 105
 		else {
-			double theta = (AxisAng3(omgtheta))(3);
-			Eigen::Matrix3d omgmat = se3mat.block<3, 3>(0, 0) / theta;
-			Eigen::Matrix3d expExpand = Eigen::MatrixXd::Identity(3, 3) * theta + (1 - std::cos(theta)) * omgmat + ((theta - std::sin(theta)) * (omgmat * omgmat));
-			Eigen::Vector3d linear(se3mat(0, 3), se3mat(1, 3), se3mat(2, 3));
-			Eigen::Vector3d GThetaV = (expExpand*linear) / theta;
+			double theta = std::get<1>(AxisAng3(omgtheta));
+			Matrix<3> omgmat = se3mat.block<3, 3>(0, 0) / theta;
+			Matrix<3> expExpand = Matrix<3>::Identity() * theta + (1 - std::cos(theta)) * omgmat + ((theta - std::sin(theta)) * (omgmat * omgmat));
+			Vector<3> linear(se3mat(0, 3), se3mat(1, 3), se3mat(2, 3));
+			Vector<3> GThetaV = (expExpand*linear) / theta;
 			m_ret << MatrixExp3(se3mat_cut), GThetaV,
 				0, 0, 0, 1;
 			return m_ret;
@@ -248,21 +231,25 @@ namespace mr {
 
 	}
 
-	Eigen::MatrixXd MatrixLog6(const Eigen::MatrixXd& T) {
-		Eigen::MatrixXd m_ret(4, 4);
-		auto rp = mr::TransToRp(T);
-		Eigen::Matrix3d omgmat = MatrixLog3(rp.at(0));
-		Eigen::Matrix3d zeros3d = Eigen::Matrix3d::Zero(3, 3);
+	Matrix<4> MatrixLog6(const Matrix<4>& T) {
+		Matrix<4> m_ret;
+
+		// Extract the rotation and position vectors
+		Matrix<3> R;
+		Vector<3> p;
+		std::tie(R, p) = TransToRp(T);
+
+		Matrix<3> omgmat = MatrixLog3(R);
 		if (NearZero(omgmat.norm())) {
-			m_ret << zeros3d, rp.at(1),
+			m_ret << Matrix<3>::Zero(), p,
 				0, 0, 0, 0;
 		}
 		else {
-			double theta = std::acos((rp.at(0).trace() - 1) / 2.0);
-			Eigen::Matrix3d logExpand1 = Eigen::MatrixXd::Identity(3, 3) - omgmat / 2.0;
-			Eigen::Matrix3d logExpand2 = (1.0 / theta - 1.0 / std::tan(theta / 2.0) / 2)*omgmat*omgmat / theta;
-			Eigen::Matrix3d logExpand = logExpand1 + logExpand2;
-			m_ret << omgmat, logExpand*rp.at(1),
+			double theta = std::acos((R.trace() - 1) / 2.0);
+			Matrix<3> logExpand1 = Matrix<3>::Identity() - omgmat / 2.0;
+			Matrix<3> logExpand2 = (1.0 / theta - 1.0 / std::tan(theta / 2.0) / 2)*omgmat*omgmat / theta;
+			Matrix<3> logExpand = logExpand1 + logExpand2;
+			m_ret << omgmat, logExpand*p,
 				0, 0, 0, 0;
 		}
 		return m_ret;
@@ -278,8 +265,8 @@ namespace mr {
 	 *				at the specified coordinates
 	 * Notes: FK means Forward Kinematics
 	 */
-	Eigen::MatrixXd FKinSpace(const Eigen::MatrixXd& M, const Eigen::MatrixXd& Slist, const Eigen::VectorXd& thetaList) {
-		Eigen::MatrixXd T = M;
+	Matrix<4> FKinSpace(const Matrix<4>& M, const Eigen::MatrixXd& Slist, const Eigen::VectorXd& thetaList) {
+		Matrix<4> T = M;
 		for (int i = (thetaList.size() - 1); i > -1; i--) {
 			T = MatrixExp6(VecTose3(Slist.col(i)*thetaList(i))) * T;
 		}
@@ -296,8 +283,8 @@ namespace mr {
 	 *				at the specified coordinates
 	 * Notes: FK means Forward Kinematics
 	 */
-	Eigen::MatrixXd FKinBody(const Eigen::MatrixXd& M, const Eigen::MatrixXd& Blist, const Eigen::VectorXd& thetaList) {
-		Eigen::MatrixXd T = M;
+	Matrix<4> FKinBody(const Matrix<4>& M, const Eigen::MatrixXd& Blist, const Eigen::VectorXd& thetaList) {
+		Matrix<4> T = M;
 		for (int i = 0; i < thetaList.size(); i++) {
 			T = T * MatrixExp6(VecTose3(Blist.col(i)*thetaList(i)));
 		}
@@ -341,90 +328,91 @@ namespace mr {
 		return Jb;
 	}
 
-	Eigen::MatrixXd TransInv(const Eigen::MatrixXd& transform) {
-		auto rp = mr::TransToRp(transform);
-		auto Rt = rp.at(0).transpose();
-		auto t = -(Rt * rp.at(1));
-		Eigen::MatrixXd inv(4, 4);
-		inv = Eigen::MatrixXd::Zero(4,4);
+	Matrix<4> TransInv(const Matrix<4>& T) {
+		Matrix<3> R;
+		Vector<3> p;
+		std::tie(R, p) = TransToRp(T);
+		Matrix<3> Rt = R.transpose();
+		Vector<3> t = -Rt * p;
+		
+		Matrix<4> inv = Matrix<4>::Zero();
 		inv.block(0, 0, 3, 3) = Rt;
 		inv.block(0, 3, 3, 1) = t;
 		inv(3, 3) = 1;
 		return inv;
 	}
 
-	Eigen::MatrixXd RotInv(const Eigen::MatrixXd& rotMatrix) {
+	Matrix<3> RotInv(const Matrix<3>& rotMatrix) {
 		return rotMatrix.transpose();
 	}
 
-	Eigen::VectorXd ScrewToAxis(Eigen::Vector3d q, Eigen::Vector3d s, double h) {
-		Eigen::VectorXd axis(6);
+	Vector<6> ScrewToAxis(Vector<3> q, Vector<3> s, double h) {
+		Vector<6> axis;
 		axis.segment(0, 3) = s;
 		axis.segment(3, 3) = q.cross(s) + (h * s);
 		return axis;
 	}
 
-	Eigen::VectorXd AxisAng6(const Eigen::VectorXd& expc6) {
-		Eigen::VectorXd v_ret(7);
-		double theta = Eigen::Vector3d(expc6(0), expc6(1), expc6(2)).norm();
-		if (NearZero(theta))
-			theta = Eigen::Vector3d(expc6(3), expc6(4), expc6(5)).norm();
-		v_ret << expc6 / theta, theta;
-		return v_ret;
+	std::tuple<Vector<6>, double> AxisAng6(const Vector<6>& expc6) {
+		double theta = Vector<3>(expc6(0), expc6(1), expc6(2)).norm();
+		if (NearZero(theta)) {
+			theta = Vector<3>(expc6(3), expc6(4), expc6(5)).norm();
+		}
+		return std::make_tuple(expc6 / theta, theta);
 	}
 
-	Eigen::MatrixXd ProjectToSO3(const Eigen::MatrixXd& M) {
-		Eigen::JacobiSVD<Eigen::MatrixXd> svd(M, Eigen::ComputeFullU | Eigen::ComputeFullV);
-		Eigen::MatrixXd R = svd.matrixU() * svd.matrixV().transpose();
+	Matrix<3> ProjectToSO3(const Matrix<3> & M) {
+		Eigen::JacobiSVD<Matrix<3>> svd(M, Eigen::ComputeFullU | Eigen::ComputeFullV);
+		Matrix<3> R = svd.matrixU() * svd.matrixV().transpose();
 		if (R.determinant() < 0)
 			// In this case the result may be far from M; reverse sign of 3rd column
 			R.col(2) *= -1;
 		return R;
 	}
 
-	Eigen::MatrixXd ProjectToSE3(const Eigen::MatrixXd& M) {
-		Eigen::Matrix3d R = M.block<3, 3>(0, 0);
-		Eigen::Vector3d t = M.block<3, 1>(0, 3);
-		Eigen::MatrixXd T = RpToTrans(ProjectToSO3(R), t);
+	Matrix<4> ProjectToSE3(const Matrix<4>& M) {
+		Matrix<3> R = M.block<3, 3>(0, 0);
+		Vector<3> t = M.block<3, 1>(0, 3);
+		Matrix<4> T = RpToTrans(ProjectToSO3(R), t);
 		return T;
 	}
 
-	double DistanceToSO3(const Eigen::Matrix3d& M) {
+	double DistanceToSO3(const Matrix<3>& M) {
 		if (M.determinant() > 0)
-			return (M.transpose() * M - Eigen::Matrix3d::Identity()).norm();
+			return (M.transpose() * M - Matrix<3>::Identity()).norm();
 		else
 			return 1.0e9;
 	}
 
-	double DistanceToSE3(const Eigen::Matrix4d& T) {
-		Eigen::Matrix3d matR = T.block<3, 3>(0, 0);
+	double DistanceToSE3(const Matrix<4>& T) {
+		Matrix<3> matR = T.block<3, 3>(0, 0);
 		if (matR.determinant() > 0) {
-			Eigen::Matrix4d m_ret;
-			m_ret << matR.transpose()*matR, Eigen::Vector3d::Zero(3),
+			Matrix<4> m_ret;
+			m_ret << matR.transpose()*matR, Vector<3>::Zero(3),
 				T.row(3);
-			m_ret = m_ret - Eigen::Matrix4d::Identity();
+			m_ret = m_ret - Matrix<4>::Identity();
 			return m_ret.norm();
 		}
 		else
 			return 1.0e9;
 	}
 
-	bool TestIfSO3(const Eigen::Matrix3d& M) {
+	bool TestIfSO3(const Matrix<3>& M) {
 		return std::abs(DistanceToSO3(M)) < 1e-3;
 	}
 
-	bool TestIfSE3(const Eigen::Matrix4d& T) {
+	bool TestIfSE3(const Matrix<4>& T) {
 		return std::abs(DistanceToSE3(T)) < 1e-3;
 	}
-	bool IKinBody(const Eigen::MatrixXd& Blist, const Eigen::MatrixXd& M, const Eigen::MatrixXd& T,
+	bool IKinBody(const Eigen::MatrixXd& Blist, const Matrix<4>& M, const Matrix<4>& T,
 		Eigen::VectorXd& thetalist, double eomg, double ev) {
 		int i = 0;
 		int maxiterations = 20;
-		Eigen::MatrixXd Tfk = FKinBody(M, Blist, thetalist);
-		Eigen::MatrixXd Tdiff = TransInv(Tfk)*T;
+		Matrix<4> Tfk = FKinBody(M, Blist, thetalist);
+		Matrix<4> Tdiff = TransInv(Tfk)*T;
 		Eigen::VectorXd Vb = se3ToVec(MatrixLog6(Tdiff));
-		Eigen::Vector3d angular(Vb(0), Vb(1), Vb(2));
-		Eigen::Vector3d linear(Vb(3), Vb(4), Vb(5));
+		Vector<3> angular(Vb(0), Vb(1), Vb(2));
+		Vector<3> linear(Vb(3), Vb(4), Vb(5));
 
 		bool err = (angular.norm() > eomg || linear.norm() > ev);
 		Eigen::MatrixXd Jb;
@@ -436,22 +424,22 @@ namespace mr {
 			Tfk = FKinBody(M, Blist, thetalist);
 			Tdiff = TransInv(Tfk)*T;
 			Vb = se3ToVec(MatrixLog6(Tdiff));
-			angular = Eigen::Vector3d(Vb(0), Vb(1), Vb(2));
-			linear = Eigen::Vector3d(Vb(3), Vb(4), Vb(5));
+			angular = Vector<3>(Vb(0), Vb(1), Vb(2));
+			linear = Vector<3>(Vb(3), Vb(4), Vb(5));
 			err = (angular.norm() > eomg || linear.norm() > ev);
 		}
 		return !err;
 	}
 
-	bool IKinSpace(const Eigen::MatrixXd& Slist, const Eigen::MatrixXd& M, const Eigen::MatrixXd& T,
+	bool IKinSpace(const Eigen::MatrixXd& Slist, const Matrix<4>& M, const Matrix<4>& T,
 		Eigen::VectorXd& thetalist, double eomg, double ev) {
 		int i = 0;
 		int maxiterations = 20;
-		Eigen::MatrixXd Tfk = FKinSpace(M, Slist, thetalist);
-		Eigen::MatrixXd Tdiff = TransInv(Tfk)*T;
-		Eigen::VectorXd Vs = Adjoint(Tfk)*se3ToVec(MatrixLog6(Tdiff));
-		Eigen::Vector3d angular(Vs(0), Vs(1), Vs(2));
-		Eigen::Vector3d linear(Vs(3), Vs(4), Vs(5));
+		Matrix<4> Tfk = FKinSpace(M, Slist, thetalist);
+		Matrix<4> Tdiff = TransInv(Tfk)*T;
+		Vector<6> Vs = Adjoint(Tfk)*se3ToVec(MatrixLog6(Tdiff));
+		Vector<3> angular(Vs(0), Vs(1), Vs(2));
+		Vector<3> linear(Vs(3), Vs(4), Vs(5));
 
 		bool err = (angular.norm() > eomg || linear.norm() > ev);
 		Eigen::MatrixXd Js;
@@ -463,8 +451,8 @@ namespace mr {
 			Tfk = FKinSpace(M, Slist, thetalist);
 			Tdiff = TransInv(Tfk)*T;
 			Vs = Adjoint(Tfk)*se3ToVec(MatrixLog6(Tdiff));
-			angular = Eigen::Vector3d(Vs(0), Vs(1), Vs(2));
-			linear = Eigen::Vector3d(Vs(3), Vs(4), Vs(5));
+			angular = Vector<3>(Vs(0), Vs(1), Vs(2));
+			linear = Vector<3>(Vs(3), Vs(4), Vs(5));
 			err = (angular.norm() > eomg || linear.norm() > ev);
 		}
 		return !err;
@@ -496,11 +484,11 @@ namespace mr {
 	    // the size of the lists
 		int n = thetalist.size();
 
-		Eigen::MatrixXd Mi = Eigen::MatrixXd::Identity(4, 4);
+		Matrix<4> Mi = Matrix<4>::Identity();
 		Eigen::MatrixXd Ai = Eigen::MatrixXd::Zero(6,n);
-		std::vector<Eigen::MatrixXd> AdTi;
+		std::vector<Matrix<6>> AdTi;
 		for (int i = 0; i < n+1; i++) {
-			AdTi.push_back(Eigen::MatrixXd::Zero(6,6));
+			AdTi.push_back(Matrix<6>::Zero());
 		}
 		Eigen::MatrixXd Vi = Eigen::MatrixXd::Zero(6,n+1);    // velocity
 		Eigen::MatrixXd Vdi = Eigen::MatrixXd::Zero(6,n+1);   // acceleration
@@ -521,7 +509,7 @@ namespace mr {
 
 			Vi.col(i+1) = AdTi[i] * Vi.col(i) + Ai.col(i) * dthetalist(i);
 			Vdi.col(i+1) = AdTi[i] * Vdi.col(i) + Ai.col(i) * ddthetalist(i)
-						   + ad(Vi.col(i+1)) * Ai.col(i) * dthetalist(i); // this index is different from book!
+						   + ad((Vector<6>)Vi.col(i+1)) * Ai.col(i) * dthetalist(i); // this index is different from book!
 		}
 
 		// backward pass
@@ -773,37 +761,38 @@ namespace mr {
 		Eigen::MatrixXd traj = trajT.transpose();
 		return traj;
 	}
-	std::vector<Eigen::MatrixXd> ScrewTrajectory(const Eigen::MatrixXd& Xstart, const Eigen::MatrixXd& Xend, double Tf, int N, int method) {
+	std::vector<Matrix<4>> ScrewTrajectory(const Matrix<4>& Xstart, const Matrix<4>& Xend, double Tf, int N, int method) {
 		double timegap = Tf / (N - 1);
-		std::vector<Eigen::MatrixXd> traj(N);
+		std::vector<Matrix<4>> traj(N);
 		double st;
 		for (int i = 0; i < N; ++i) {
 			if (method == 3)
 				st = CubicTimeScaling(Tf, timegap*i);
 			else
 				st = QuinticTimeScaling(Tf, timegap*i);
-			Eigen::MatrixXd Ttemp = MatrixLog6(TransInv(Xstart)*Xend);
+			Matrix<4> Ttemp = MatrixLog6(TransInv(Xstart)*Xend);
 			traj.at(i) = Xstart * MatrixExp6(Ttemp*st);
 		}
 		return traj;
 	}
 
-	std::vector<Eigen::MatrixXd> CartesianTrajectory(const Eigen::MatrixXd& Xstart, const Eigen::MatrixXd& Xend, double Tf, int N, int method) {
+	std::vector<Matrix<4>> CartesianTrajectory(const Matrix<4>& Xstart, const Matrix<4>& Xend, double Tf, int N, int method) {
 		double timegap = Tf / (N - 1);
-		std::vector<Eigen::MatrixXd> traj(N);
-		std::vector<Eigen::MatrixXd> Rpstart = TransToRp(Xstart);
-		std::vector<Eigen::MatrixXd> Rpend = TransToRp(Xend);
-		Eigen::Matrix3d Rstart = Rpstart[0]; Eigen::Vector3d pstart = Rpstart[1];
-		Eigen::Matrix3d Rend = Rpend[0]; Eigen::Vector3d pend = Rpend[1];
+		std::vector<Matrix<4>> traj(N);
+		Matrix<3> Rstart, Rend; 
+		Vector<3> pstart, pend;
+		std::tie(Rstart, pstart) = TransToRp(Xstart);
+		std::tie(Rend, pend) = TransToRp(Xend);
+
 		double st;
 		for (int i = 0; i < N; ++i) {
 			if (method == 3)
 				st = CubicTimeScaling(Tf, timegap*i);
 			else
 				st = QuinticTimeScaling(Tf, timegap*i);
-			Eigen::Matrix3d Ri = Rstart * MatrixExp3(MatrixLog3(Rstart.transpose() * Rend)*st);
-			Eigen::Vector3d pi = st*pend + (1 - st)*pstart;
-			Eigen::MatrixXd traji(4, 4);
+			Matrix<3> Ri = Rstart * MatrixExp3(MatrixLog3(Rstart.transpose() * Rend)*st);
+			Vector<3> pi = st*pend + (1 - st)*pstart;
+			Matrix<4> traji;
 			traji << Ri, pi,
 				0, 0, 0, 1;
 			traj.at(i) = traji;

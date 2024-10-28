@@ -5,6 +5,12 @@
 
 # define M_PI           3.14159265358979323846  /* pi */
 
+template <size_t N>
+using Matrix = Eigen::Matrix<double, N, N>;
+
+template <size_t N>
+using Vector = Eigen::Matrix<double, N, 1>;
+
 TEST(MRTest, VecToSO3Test) {
 	Eigen::Vector3d vec(1, 2, 3);
 	Eigen::Matrix3d result(3, 3);
@@ -168,13 +174,18 @@ TEST(MRTest, FKInSpaceTest) {
 }
 
 TEST(MRTest, AxisAng6Test) {
-	Eigen::VectorXd input(6);
-	Eigen::VectorXd result(7);
+	Vector<6> input;
+	Vector<6> S_expected;
 	input << 1.0, 0.0, 0.0, 1.0, 2.0, 3.0;
-	result << 1.0, 0.0, 0.0, 1.0, 2.0, 3.0, 1.0;
+	S_expected << 1.0, 0.0, 0.0, 1.0, 2.0, 3.0;
+	double theta_expected = 1.0;
 
-	Eigen::VectorXd output = mr::AxisAng6(input);
-	ASSERT_TRUE(output.isApprox(result, 4));
+	Vector<6> S_output;
+	double theta_output;
+	std::tie(S_output, theta_output) = mr::AxisAng6(input);
+
+	ASSERT_TRUE(S_output.isApprox(S_expected, 4));
+	ASSERT_NEAR(theta_output, theta_expected, 1e-4);
 }
 
 TEST(MRTest, MatrixLog6Test) {
@@ -204,7 +215,7 @@ TEST(MRTest, DistanceToSO3Test) {
 }
 
 TEST(MRTest, DistanceToSE3Test) {
-	Eigen::Matrix4d input;
+	Matrix<4> input;
 	double result = 0.134931;
 	input << 1.0, 0.0, 0.0, 1.2,
 		0.0, 0.1, -0.95, 1.5,
@@ -223,7 +234,7 @@ TEST(MRTest, TestIfSO3Test) {
 }
 
 TEST(MRTest, TestIfSE3Test) {
-	Eigen::Matrix4d input;
+	Matrix<4> input;
 	bool result = false;
 	input << 1.0, 0.0, 0.0, 1.2,
 		0.0, 0.1, -0.95, 1.5,
@@ -238,12 +249,12 @@ TEST(MRTest, IKinBodyTest) {
 		0, 0, 0, 0, 1, 0,
 		0, 0, 1, 0, 0, 0.1;
 	Eigen::MatrixXd Blist = BlistT.transpose();
-	Eigen::Matrix4d M;
+	Matrix<4> M;
 	M << -1, 0, 0, 0,
 		0, 1, 0, 6,
 		0, 0, -1, 2,
 		0, 0, 0, 1;
-	Eigen::Matrix4d T;
+	Matrix<4> T;
 	T << 0, 1, 0, -5,
 		1, 0, 0, 4,
 		0, 0, -1, 1.6858,
@@ -266,12 +277,12 @@ TEST(MRTest, IKinSpaceTest) {
 		0, 0, 0, 0, 1, 0,
 		0, 0, -1, -6, 0, -0.1;
 	Eigen::MatrixXd Slist = SlistT.transpose();
-	Eigen::Matrix4d M;
+	Matrix<4> M;
 	M << -1, 0, 0, 0,
 		0, 1, 0, 6,
 		0, 0, -1, 2,
 		0, 0, 0, 1;
-	Eigen::Matrix4d T;
+	Matrix<4> T;
 	T << 0, 1, 0, -5,
 		1, 0, 0, 4,
 		0, 0, -1, 1.6858,
@@ -289,7 +300,7 @@ TEST(MRTest, IKinSpaceTest) {
 }
 
 TEST(MRTest, AdjointTest) {
-	Eigen::Matrix4d T;
+	Matrix<4> T;
 	T << 1, 0, 0, 0,
 		0, 0, -1, 0,
 		0, 1, 0, 3,
@@ -321,22 +332,22 @@ TEST(MRTest, InverseDynamicsTest) {
 	std::vector<Eigen::MatrixXd> Mlist;
 	std::vector<Eigen::MatrixXd> Glist;
 
-	Eigen::Matrix4d M01;
+	Matrix<4> M01;
 	M01 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.089159,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M12;
+	Matrix<4> M12;
 	M12 << 0, 0, 1, 0.28,
 		0, 1, 0, 0.13585,
 		-1, 0, 0, 0,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M23;
+	Matrix<4> M23;
 	M23 << 1, 0, 0, 0,
 		0, 1, 0, -0.1197,
 		0, 0, 1, 0.395,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M34;
+	Matrix<4> M34;
 	M34 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.14225,
@@ -382,22 +393,22 @@ TEST(MRTest, GravityForcesTest) {
 	std::vector<Eigen::MatrixXd> Mlist;
 	std::vector<Eigen::MatrixXd> Glist;
 
-	Eigen::Matrix4d M01;
+	Matrix<4> M01;
 	M01 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.089159,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M12;
+	Matrix<4> M12;
 	M12 << 0, 0, 1, 0.28,
 		0, 1, 0, 0.13585,
 		-1, 0, 0, 0,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M23;
+	Matrix<4> M23;
 	M23 << 1, 0, 0, 0,
 		0, 1, 0, -0.1197,
 		0, 0, 1, 0.395,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M34;
+	Matrix<4> M34;
 	M34 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.14225,
@@ -440,22 +451,22 @@ TEST(MRTest, MassMatrixTest) {
 	std::vector<Eigen::MatrixXd> Mlist;
 	std::vector<Eigen::MatrixXd> Glist;
 
-	Eigen::Matrix4d M01;
+	Matrix<4> M01;
 	M01 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.089159,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M12;
+	Matrix<4> M12;
 	M12 << 0, 0, 1, 0.28,
 		0, 1, 0, 0.13585,
 		-1, 0, 0, 0,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M23;
+	Matrix<4> M23;
 	M23 << 1, 0, 0, 0,
 		0, 1, 0, -0.1197,
 		0, 0, 1, 0.395,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M34;
+	Matrix<4> M34;
 	M34 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.14225,
@@ -502,22 +513,22 @@ TEST(MRTest, VelQuadraticForcesTest) {
 	std::vector<Eigen::MatrixXd> Mlist;
 	std::vector<Eigen::MatrixXd> Glist;
 
-	Eigen::Matrix4d M01;
+	Matrix<4> M01;
 	M01 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.089159,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M12;
+	Matrix<4> M12;
 	M12 << 0, 0, 1, 0.28,
 		0, 1, 0, 0.13585,
 		-1, 0, 0, 0,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M23;
+	Matrix<4> M23;
 	M23 << 1, 0, 0, 0,
 		0, 1, 0, -0.1197,
 		0, 0, 1, 0.395,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M34;
+	Matrix<4> M34;
 	M34 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.14225,
@@ -562,22 +573,22 @@ TEST(MRTest, EndEffectorForcesTest) {
 	std::vector<Eigen::MatrixXd> Mlist;
 	std::vector<Eigen::MatrixXd> Glist;
 
-	Eigen::Matrix4d M01;
+	Matrix<4> M01;
 	M01 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.089159,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M12;
+	Matrix<4> M12;
 	M12 << 0, 0, 1, 0.28,
 		0, 1, 0, 0.13585,
 		-1, 0, 0, 0,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M23;
+	Matrix<4> M23;
 	M23 << 1, 0, 0, 0,
 		0, 1, 0, -0.1197,
 		0, 0, 1, 0.395,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M34;
+	Matrix<4> M34;
 	M34 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.14225,
@@ -629,22 +640,22 @@ TEST(MRTest, ForwardDynamicsTest) {
 	std::vector<Eigen::MatrixXd> Mlist;
 	std::vector<Eigen::MatrixXd> Glist;
 
-	Eigen::Matrix4d M01;
+	Matrix<4> M01;
 	M01 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.089159,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M12;
+	Matrix<4> M12;
 	M12 << 0, 0, 1, 0.28,
 		0, 1, 0, 0.13585,
 		-1, 0, 0, 0,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M23;
+	Matrix<4> M23;
 	M23 << 1, 0, 0, 0,
 		0, 1, 0, -0.1197,
 		0, 0, 1, 0.395,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M34;
+	Matrix<4> M34;
 	M34 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.14225,
@@ -714,22 +725,22 @@ TEST(MRTest, ComputedTorqueTest) {
 	std::vector<Eigen::MatrixXd> Mlist;
 	std::vector<Eigen::MatrixXd> Glist;
 
-	Eigen::Matrix4d M01;
+	Matrix<4> M01;
 	M01 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.089159,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M12;
+	Matrix<4> M12;
 	M12 << 0, 0, 1, 0.28,
 		0, 1, 0, 0.13585,
 		-1, 0, 0, 0,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M23;
+	Matrix<4> M23;
 	M23 << 1, 0, 0, 0,
 		0, 1, 0, -0.1197,
 		0, 0, 1, 0.395,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M34;
+	Matrix<4> M34;
 	M34 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.14225,
@@ -831,12 +842,12 @@ TEST(MRTest, ScrewTrajectoryTest) {
 
 	std::vector<Eigen::MatrixXd> result(N);
 	result[0] = Xstart;
-	Eigen::Matrix4d X12;
+	Matrix<4> X12;
 	X12 << 0.904, -0.25, 0.346, 0.441,
 		0.346, 0.904, -0.25, 0.529,
 		-0.25, 0.346, 0.904, 1.601,
 		0, 0, 0, 1;
-	Eigen::Matrix4d X23;
+	Matrix<4> X23;
 	X23 << 0.346, -0.25, 0.904, -0.117,
 		0.904, 0.346, -0.25, 0.473,
 		-0.25, 0.904, 0.346, 3.274,
@@ -845,7 +856,7 @@ TEST(MRTest, ScrewTrajectoryTest) {
 	result[2] = X23;
 	result[3] = Xend;
 
-	std::vector<Eigen::MatrixXd> traj = mr::ScrewTrajectory(Xstart, Xend, Tf, N, method);
+	std::vector<Matrix<4>> traj = mr::ScrewTrajectory(Xstart, Xend, Tf, N, method);
 
 	for (int i = 0; i < N; ++i) {
 		ASSERT_TRUE(traj[i].isApprox(result[i], 4));
@@ -853,12 +864,12 @@ TEST(MRTest, ScrewTrajectoryTest) {
 }
 
 TEST(MRTest, CartesianTrajectoryTest) {
-	Eigen::MatrixXd Xstart(4, 4);
+	Matrix<4> Xstart;
 	Xstart << 1, 0, 0, 1,
 		0, 1, 0, 0,
 		0, 0, 1, 1,
 		0, 0, 0, 1;
-	Eigen::MatrixXd Xend(4, 4);
+	Matrix<4> Xend;
 	Xend << 0, 0, 1, 0.1,
 		1, 0, 0, 0,
 		0, 1, 0, 4.1,
@@ -867,14 +878,14 @@ TEST(MRTest, CartesianTrajectoryTest) {
 	int N = 4;
 	int method = 5;
 
-	std::vector<Eigen::MatrixXd> result(N);
+	std::vector<Matrix<4>> result(N);
 	result[0] = Xstart;
-	Eigen::Matrix4d X12;
+	Matrix<4> X12;
 	X12 << 0.937, -0.214, 0.277, 0.811,
 		0.277, 0.937, -0.214, 0,
 		-0.214, 0.277, 0.937, 1.651,
 		0, 0, 0, 1;
-	Eigen::Matrix4d X23;
+	Matrix<4> X23;
 	X23 << 0.277, -0.214, 0.937, 0.289,
 		0.937, 0.277, -0.214, 0,
 		-0.214, 0.937, 0.277, 3.449,
@@ -883,7 +894,7 @@ TEST(MRTest, CartesianTrajectoryTest) {
 	result[2] = X23;
 	result[3] = Xend;
 
-	std::vector<Eigen::MatrixXd> traj = mr::CartesianTrajectory(Xstart, Xend, Tf, N, method);
+	std::vector<Matrix<4>> traj = mr::CartesianTrajectory(Xstart, Xend, Tf, N, method);
 
 	for (int i = 0; i < N; ++i) {
 		ASSERT_TRUE(traj[i].isApprox(result[i], 4));
@@ -915,22 +926,22 @@ TEST(MRTest, InverseDynamicsTrajectoryTest) {
 
 	std::vector<Eigen::MatrixXd> Mlist;
 	std::vector<Eigen::MatrixXd> Glist;
-	Eigen::Matrix4d M01;
+	Matrix<4> M01;
 	M01 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.089159,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M12;
+	Matrix<4> M12;
 	M12 << 0, 0, 1, 0.28,
 		0, 1, 0, 0.13585,
 		-1, 0, 0, 0,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M23;
+	Matrix<4> M23;
 	M23 << 1, 0, 0, 0,
 		0, 1, 0, -0.1197,
 		0, 0, 1, 0.395,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M34;
+	Matrix<4> M34;
 	M34 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.14225,
@@ -999,22 +1010,22 @@ TEST(MRTest, ForwardDynamicsTrajectoryTest) {
 
 	std::vector<Eigen::MatrixXd> Mlist;
 	std::vector<Eigen::MatrixXd> Glist;
-	Eigen::Matrix4d M01;
+	Matrix<4> M01;
 	M01 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.089159,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M12;
+	Matrix<4> M12;
 	M12 << 0, 0, 1, 0.28,
 		0, 1, 0, 0.13585,
 		-1, 0, 0, 0,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M23;
+	Matrix<4> M23;
 	M23 << 1, 0, 0, 0,
 		0, 1, 0, -0.1197,
 		0, 0, 1, 0.395,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M34;
+	Matrix<4> M34;
 	M34 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.14225,
@@ -1083,22 +1094,22 @@ TEST(MRTest, SimulateControlTest) {
 
 	std::vector<Eigen::MatrixXd> Mlist;
 	std::vector<Eigen::MatrixXd> Glist;
-	Eigen::Matrix4d M01;
+	Matrix<4> M01;
 	M01 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.089159,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M12;
+	Matrix<4> M12;
 	M12 << 0, 0, 1, 0.28,
 		0, 1, 0, 0.13585,
 		-1, 0, 0, 0,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M23;
+	Matrix<4> M23;
 	M23 << 1, 0, 0, 0,
 		0, 1, 0, -0.1197,
 		0, 0, 1, 0.395,
 		0, 0, 0, 1;
-	Eigen::Matrix4d M34;
+	Matrix<4> M34;
 	M34 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.14225,
@@ -1145,22 +1156,22 @@ TEST(MRTest, SimulateControlTest) {
 
 	std::vector<Eigen::MatrixXd> Mtildelist;
 	std::vector<Eigen::MatrixXd> Gtildelist;
-	Eigen::Matrix4d Mhat01;
+	Matrix<4> Mhat01;
 	Mhat01 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.1,
 		0, 0, 0, 1;
-	Eigen::Matrix4d Mhat12;
+	Matrix<4> Mhat12;
 	Mhat12 << 0, 0, 1, 0.3,
 		0, 1, 0, 0.2,
 		-1, 0, 0, 0,
 		0, 0, 0, 1;
-	Eigen::Matrix4d Mhat23;
+	Matrix<4> Mhat23;
 	Mhat23 << 1, 0, 0, 0,
 		0, 1, 0, -0.2,
 		0, 0, 1, 0.4,
 		0, 0, 0, 1;
-	Eigen::Matrix4d Mhat34;
+	Matrix<4> Mhat34;
 	Mhat34 << 1, 0, 0, 0,
 		0, 1, 0, 0,
 		0, 0, 1, 0.2,
